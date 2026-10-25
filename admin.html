@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>لوحة الدكتور</title>
+<style>
+  :root{--bg:#eef7f5;--card:#fff;--line:#cfe7e2;--teal:#1f8579;--teal2:#2a9d8f;--text:#1d3b3f;--muted:#5b7a7d;--red:#c0392b;--amber:#d98a1d}
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{font-family:system-ui,-apple-system,'Segoe UI',Roboto,'Noto Naskh Arabic',Tahoma,sans-serif;background:var(--bg);color:var(--text);padding:16px;max-width:560px;margin:0 auto}
+  h1{font-size:22px;margin-bottom:4px} h2{font-size:17px;margin:20px 0 10px}
+  .muted{color:var(--muted);font-size:13.5px;line-height:1.7}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px}
+  input{width:100%;font-family:inherit;font-size:15px;border:1.5px solid var(--line);border-radius:12px;padding:11px 13px;margin:6px 0;background:#fff}
+  button{font-family:inherit;cursor:pointer}
+  .b{border:none;border-radius:11px;padding:10px 14px;font-size:14px;font-weight:700;background:var(--teal);color:#fff}
+  .b.o{background:#fff;color:var(--teal);border:1.5px solid var(--teal)}
+  .b.r{background:#fdecea;color:var(--red);border:1.5px solid #e57373}
+  .b.w{background:#e7f8ee;color:#135c36;border:1.5px solid #8fd5a9}
+  .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .tabs{display:flex;gap:8px;margin:14px 0}
+  .tabs button{flex:1;padding:11px;border-radius:12px;border:1.5px solid var(--line);background:#fff;font-weight:700;color:var(--text)}
+  .tabs button.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+  .badge{font-size:12px;font-weight:700;padding:3px 9px;border-radius:20px}
+  .badge.pending{background:#fff3d6;color:var(--amber)}.badge.confirmed{background:#e7f8ee;color:#135c36}.badge.canceled{background:#fdecea;color:var(--red)}
+  .t{font-weight:900;font-size:16px}
+  .kv{font-size:14px;line-height:1.9}
+  .days{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 10px}
+  .day{flex:0 0 auto;min-width:58px;padding:8px 6px;border:1.5px solid var(--line);border-radius:12px;background:#fff;color:var(--text);text-align:center;line-height:1.35}
+  .day b{display:block;font-size:17px}.day small{font-size:11.5px;color:var(--muted)}
+  .day.on{background:var(--teal);color:#fff;border-color:var(--teal)}.day.on small{color:#e6fffb}
+  .slots{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .slot{min-height:46px;border-radius:12px;font-weight:700;font-size:14px;border:1.5px solid;padding:4px}
+  .slot.free{background:#e7f8ee;border-color:#4cbf7a;color:#135c36}
+  .slot.taken{background:#fdecea;border-color:#e57373;color:#a33232}
+  .slot small{display:block;font-weight:400;font-size:11px}
+  .err{color:var(--red);font-weight:700;font-size:13.5px;margin-top:8px;min-height:18px}
+  .ok{color:var(--teal)}
+  [hidden]{display:none!important}
+</style>
+</head>
+<body>
+<h1>🩺 لوحة الدكتور</h1>
+<p class="muted" id="sub">الحجوزات وقايمة الانتظار.</p>
+
+<!-- تسجيل الدخول -->
+<div class="card" id="login">
+  <b>تسجيل الدخول</b>
+  <input id="em" type="email" placeholder="الإيميل" dir="ltr" autocomplete="username">
+  <input id="pw" type="password" placeholder="كلمة السر" dir="ltr" autocomplete="current-password">
+  <button class="b" id="go" style="width:100%;margin-top:6px">دخول</button>
+  <div class="err" id="loginErr"></div>
+</div>
+
+<!-- اللوحة -->
+<div id="app" hidden>
+  <div class="top"><span class="muted" id="who"></span><button class="b o" id="reload">🔄 تحديث</button></div>
+  <div class="tabs">
+    <button id="tabB" class="on">الحجوزات</button>
+    <button id="tabW">الانتظار <span id="wCount"></span></button>
+    <button id="tabS">المواعيد</button>
+  </div>
+  <div class="err" id="appMsg"></div>
+
+  <div id="pB"></div>
+  <div id="pW" hidden></div>
+  <div id="pS" hidden>
+    <p class="muted" style="margin-bottom:8px">اضغط على ميعاد أخضر لإغلاقه (مثلاً لو مشغول)، أو على ميعاد أحمر لتحريره.</p>
+    <div class="days" id="sDays"></div>
+    <div class="slots" id="sSlots"></div>
+  </div>
+</div>
+
+<script>
+  // ====== عدّل هنا ======
+  const API_KEY = "AIzaSyDKXqqGUgMkEUOpbXxoiNU9SvpHdtas-eE";   // Web API Key من إعدادات مشروع Firebase
+  const FIREBASE_DB = "https://smart-card-f42d7-default-rtdb.europe-west1.firebasedatabase.app";
+  const SITE_NAME = "د. الوليد محمد - طبيب بيطري";
+  const OPEN_H = 6, CLOSE_H = 20, STEP = 30, DAYS_AHEAD = 30;
+  // ======================
+
+  const $ = id => document.getElementById(id);
+  const base = FIREBASE_DB.replace(/\/$/, '');
+  const pad = n => String(n).padStart(2, '0');
+  const isoOf = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  const KEYS = []; for (let m = OPEN_H * 60; m < CLOSE_H * 60; m += STEP) KEYS.push(pad(Math.floor(m / 60)) + pad(m % 60));
+  const label = k => { const h = +k.slice(0, 2), m = k.slice(2); return ((h % 12) || 12) + ':' + m + ' ' + (h >= 12 ? 'م' : 'ص'); };
+  const arDate = s => { try { return new Date(s + 'T12:00:00').toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long' }); } catch (e) { return s; } };
+  const intl = p => { p = String(p || '').replace(/[^\d+]/g, ''); if (p.startsWith('+')) return p.slice(1); if (p.startsWith('00')) return p.slice(2); if (p.startsWith('0')) return '2' + p; return p; };
+  const wa = (p, text) => 'https://wa.me/' + intl(p) + '?text=' + encodeURIComponent(text);
+
+  let token = '', data = { bookings: {}, waitlist: {}, slots: {} }, selDay = isoOf(new Date());
+
+  const tok = () => '?auth=' + encodeURIComponent(token);
+  async function api(method, path, body) {
+    const r = await fetch(base + path + '.json' + tok(), { method, body: body === undefined ? undefined : JSON.stringify(body) });
+    if (r.status === 401 || r.status === 403) { const e = new Error('auth'); e.auth = true; throw e; }
+    if (!r.ok) throw new Error('http ' + r.status);
+    return r.json();
+  }
+  function say(t, good) { const m = $('appMsg'); m.textContent = t || ''; m.className = 'err' + (good ? ' ok' : ''); }
+  function authFail() { token = ''; $('app').hidden = true; $('login').hidden = false; $('loginErr').textContent = 'انتهت الجلسة أو مفيش صلاحية، سجّل الدخول تاني.'; }
+
+  /* ===== تسجيل الدخول ===== */
+  $('go').addEventListener('click', async () => {
+    const err = $('loginErr'); err.textContent = '';
+    if (!API_KEY) { err.textContent = 'لازم تحط API_KEY في أول الملف (شوف الشرح).'; return; }
+    $('go').disabled = true;
+    try {
+      const r = await fetch('https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=' + encodeURIComponent(API_KEY), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: $('em').value.trim(), password: $('pw').value, returnSecureToken: true })
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error((j.error && j.error.message) || 'fail');
+      token = j.idToken; $('who').textContent = j.email; $('pw').value = '';
+      $('login').hidden = true; $('app').hidden = false;
+      await loadAll();
+    } catch (e) { err.textContent = 'الإيميل أو كلمة السر غلط.'; }
+    $('go').disabled = false;
+  });
+  $('pw').addEventListener('keydown', e => { if (e.key === 'Enter') $('go').click(); });
+
+  async function loadAll() {
+    say('');
+    try {
+      const [b, w, s] = await Promise.all([api('GET', '/bookings'), api('GET', '/waitlist'), api('GET', '/slots')]);
+      data = { bookings: b || {}, waitlist: w || {}, slots: s || {} };
+      renderAll();
+    } catch (e) { if (e.auth) authFail(); else say('تعذر تحميل البيانات، جرّب تحديث.'); }
+  }
+  $('reload').addEventListener('click', loadAll);
+
+  /* ===== التبويبات ===== */
+  function tab(n) {
+    ['B', 'W', 'S'].forEach(x => { $('tab' + x).classList.toggle('on', x === n); $('p' + x).hidden = x !== n; });
+  }
+  $('tabB').onclick = () => tab('B'); $('tabW').onclick = () => tab('W'); $('tabS').onclick = () => tab('S');
+
+  function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+  function btn(text, cls, fn) { const b = el('button', 'b ' + (cls || ''), text); b.addEventListener('click', fn); return b; }
+  function link(text, cls, href) { const a = el('a', 'b ' + (cls || ''), text); a.href = href; a.target = '_blank'; a.rel = 'noopener'; a.style.textDecoration = 'none'; a.style.display = 'inline-block'; return a; }
+
+  /* ===== الحجوزات ===== */
+  function renderBookings() {
+    const box = $('pB'); box.textContent = '';
+    const today = isoOf(new Date());
+    const list = Object.entries(data.bookings).map(([id, b]) => ({ id, ...b }))
+      .filter(b => b && b.date && b.date >= today && b.status !== 'canceled')
+      .sort((a, b) => (a.date + (a.slot || '')).localeCompare(b.date + (b.slot || '')));
+    const done = Object.entries(data.bookings).filter(([, b]) => b && b.status === 'canceled' && b.date >= today).length;
+    if (!list.length) { box.appendChild(el('div', 'card muted', 'مفيش حجوزات قادمة.')); }
+    let last = '';
+    list.forEach(b => {
+      if (b.date !== last) { last = b.date; box.appendChild(el('h2', '', arDate(b.date))); }
+      const c = el('div', 'card');
+      const t = el('div', 'top');
+      t.append(el('span', 't', b.time || label(b.slot || '0000')), el('span', 'badge ' + (b.status || 'pending'), b.status === 'confirmed' ? 'مؤكد' : 'بانتظار التأكيد'));
+      const kv = el('div', 'kv');
+      kv.append(el('div', '', '👤 ' + b.name), el('div', '', '📞 ' + b.phone), el('div', '', '🐾 ' + b.pet + (b.petName ? ' (' + b.petName + ')' : '') + ' · ' + (b.reason || '')));
+      if (b.note) kv.append(el('div', '', '📝 ' + b.note));
+      const row = el('div', 'row');
+      if (b.status !== 'confirmed') row.append(btn('✅ تأكيد', '', () => confirmBooking(b)));
+      row.append(link('💬 واتساب', 'w', wa(b.phone, 'أهلاً ' + b.name + '، ' + SITE_NAME + '. بخصوص حجزك يوم ' + arDate(b.date) + ' الساعة ' + (b.time || '') + '.')));
+      row.append(link('📞 اتصال', 'o', 'tel:' + b.phone));
+      row.append(btn('❌ إلغاء وتحرير', 'r', () => cancelBooking(b)));
+      c.append(t, kv, row); box.appendChild(c);
+    });
+    if (done) box.appendChild(el('p', 'muted', 'فيه ' + done + ' حجز ملغي مخفي.'));
+  }
+
+  async function confirmBooking(b) {
+    try {
+      await api('PATCH', '/bookings/' + b.id, { status: 'confirmed' });
+      data.bookings[b.id].status = 'confirmed'; renderAll(); say('تم التأكيد ✅ ابعت للعميل رسالة التأكيد.', true);
+      window.open(wa(b.phone, 'أهلاً ' + b.name + '، تم تأكيد حجزك عند ' + SITE_NAME + ' يوم ' + arDate(b.date) + ' الساعة ' + (b.time || '') + '. بانتظارك 🐾'), '_blank');
+    } catch (e) { if (e.auth) authFail(); else say('حصلت مشكلة، جرّب تاني.'); }
+  }
+
+  async function cancelBooking(b) {
+    if (!confirm('تلغي حجز ' + b.name + ' وتحرر الميعاد؟')) return;
+    try {
+      if (b.slot) await api('DELETE', '/slots/' + b.date + '/' + b.slot);
+      await api('PATCH', '/bookings/' + b.id, { status: 'canceled' });
+      data.bookings[b.id].status = 'canceled';
+      if (b.slot && data.slots[b.date]) { delete data.slots[b.date][b.slot]; }
+      renderAll(); tab('W');
+      const n = Object.keys((data.waitlist[b.date] || {})[b.slot] || {}).length;
+      say(n ? 'اتحرر الميعاد. فيه ' + n + ' منتظر، بلّغهم من هنا 👇' : 'اتحرر الميعاد ✅', true);
+    } catch (e) { if (e.auth) authFail(); else say('حصلت مشكلة، جرّب تاني.'); }
+  }
+
+  /* ===== الانتظار ===== */
+  function renderWait() {
+    const box = $('pW'); box.textContent = '';
+    const today = isoOf(new Date()); let count = 0, freeCount = 0;
+    const items = [];
+    Object.entries(data.waitlist).forEach(([d, slots]) => {
+      if (d < today) return;
+      Object.entries(slots || {}).forEach(([k, people]) => {
+        Object.entries(people || {}).forEach(([id, p]) => items.push({ d, k, id, ...p, free: !(data.slots[d] || {})[k] }));
+      });
+    });
+    items.sort((a, b) => (b.free - a.free) || (a.d + a.k).localeCompare(b.d + b.k) || (a.ts - b.ts));
+    items.forEach(p => { count++; if (p.free) freeCount++; });
+    $('wCount').textContent = freeCount ? '(' + freeCount + ' متاح)' : (count ? '(' + count + ')' : '');
+    if (!items.length) { box.appendChild(el('div', 'card muted', 'مفيش حد منتظر.')); return; }
+    items.forEach(p => {
+      const c = el('div', 'card');
+      const t = el('div', 'top');
+      t.append(el('span', 't', arDate(p.d) + ' · ' + label(p.k)), el('span', 'badge ' + (p.free ? 'confirmed' : 'pending'), p.free ? 'الميعاد متاح' : 'لسه محجوز'));
+      const kv = el('div', 'kv'); kv.append(el('div', '', '👤 ' + (p.name || 'بدون اسم')), el('div', '', '📞 ' + p.phone));
+      const row = el('div', 'row');
+      if (p.free) row.append(link('💬 بلّغه إن الميعاد اتوفر', 'w', wa(p.phone, 'أهلاً' + (p.name ? ' ' + p.name : '') + '، الميعاد اللي كنت منتظره عند ' + SITE_NAME + ' يوم ' + arDate(p.d) + ' الساعة ' + label(p.k) + ' اتوفر. لو لسه عايزه احجزه من الموقع بسرعة قبل ما يتحجز 🐾')));
+      row.append(btn('🗑 حذف من القايمة', 'r', async () => {
+        try { await api('DELETE', '/waitlist/' + p.d + '/' + p.k + '/' + p.id); delete data.waitlist[p.d][p.k][p.id]; renderAll(); } catch (e) { if (e.auth) authFail(); else say('حصلت مشكلة.'); }
+      }));
+      c.append(t, kv, row); box.appendChild(c);
+    });
+  }
+
+  /* ===== المواعيد (إغلاق/تحرير يدوي) ===== */
+  function renderSlotsAdmin() {
+    const days = $('sDays'); if (!days.children.length) {
+      const now = new Date();
+      for (let i = 0; i < DAYS_AHEAD; i++) {
+        const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
+        const b = el('button', 'day'); b.dataset.d = isoOf(d);
+        b.append(el('b', '', String(d.getDate())), el('small', '', i === 0 ? 'النهاردة' : d.toLocaleDateString('ar-EG', { weekday: 'short' })));
+        b.addEventListener('click', () => { selDay = b.dataset.d; renderSlotsAdmin(); });
+        days.appendChild(b);
+      }
+    }
+    days.querySelectorAll('.day').forEach(x => x.classList.toggle('on', x.dataset.d === selDay));
+    const box = $('sSlots'); box.textContent = '';
+    const taken = data.slots[selDay] || {};
+    const byslot = {};
+    Object.values(data.bookings).forEach(b => { if (b && b.date === selDay && b.slot && b.status !== 'canceled') byslot[b.slot] = b; });
+    KEYS.forEach(k => {
+      const isT = !!taken[k];
+      const s = el('button', 'slot ' + (isT ? 'taken' : 'free'), label(k));
+      if (isT) s.append(el('small', '', byslot[k] ? byslot[k].name : (taken[k] === true ? 'محجوز' : 'مغلق')));
+      s.addEventListener('click', async () => {
+        try {
+          if (isT) {
+            if (!confirm('تحرر ميعاد ' + label(k) + '؟' + (byslot[k] ? '\nهيتلغي حجز ' + byslot[k].name : ''))) return;
+            await api('DELETE', '/slots/' + selDay + '/' + k);
+            delete data.slots[selDay][k];
+            if (byslot[k]) { await api('PATCH', '/bookings/' + Object.keys(data.bookings).find(id => data.bookings[id] === byslot[k]), { status: 'canceled' }); byslot[k].status = 'canceled'; }
+          } else {
+            await api('PUT', '/slots/' + selDay + '/' + k, 'x');
+            (data.slots[selDay] = data.slots[selDay] || {})[k] = 'x';
+          }
+          renderAll();
+        } catch (e) { if (e.auth) authFail(); else say('حصلت مشكلة، جرّب تاني.'); }
+      });
+      box.appendChild(s);
+    });
+  }
+
+  function renderAll() { renderBookings(); renderWait(); renderSlotsAdmin(); }
+</script>
+</body>
+</html>

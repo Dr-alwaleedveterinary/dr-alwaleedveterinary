@@ -58,6 +58,30 @@
   .btn.wa{background:#e7f8ee;border-color:#8fd5a9;color:#135c36}
   .btn.fb{background:#fff7ec;border-color:#f6cf9f;color:#7a4510}
   .ico{font-size:20px}
+  .btn.book{background:linear-gradient(135deg,#f4a261,#f7b97e);color:#4a2a0a;border:none;font-weight:900;font-size:17px;padding:16px;box-shadow:0 8px 20px rgba(244,162,97,.35)}
+  .fbsheet select{width:100%;font-family:inherit;font-size:15px;color:var(--text);border:1.5px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:10px;background:#fff;outline:none}
+  .fbsheet label{display:block;font-size:13px;color:var(--muted);font-weight:700;margin:2px 4px 4px}
+  .two{display:flex;gap:10px}.two>div{flex:1;min-width:0}
+  .days{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 10px;margin-bottom:4px}
+  .day{flex:0 0 auto;min-width:58px;padding:8px 6px;border:1.5px solid var(--line);border-radius:12px;background:#fff;font-family:inherit;color:var(--text);cursor:pointer;text-align:center;line-height:1.35}
+  .day b{display:block;font-size:17px}.day small{font-size:11.5px;color:var(--muted)}
+  .day.on{background:var(--teal);color:#fff;border-color:var(--teal)}.day.on small{color:#e6fffb}
+  .legend{display:flex;gap:16px;justify-content:center;font-size:12.5px;color:var(--muted);margin:2px 0 10px;font-weight:600}
+  .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-inline-end:5px}
+  .dot.g{background:#2fb36b}.dot.r{background:#e05a5a}
+  .slots{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;padding:2px}
+  .slot{min-height:46px;border-radius:12px;font-family:inherit;font-size:14.5px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px;border:1.5px solid}
+  .slot.free{background:#e7f8ee;border-color:#4cbf7a;color:#135c36;cursor:pointer}
+  .slot.free.sel{background:#1f8579;border-color:#1f8579;color:#fff;box-shadow:0 4px 12px rgba(31,133,121,.35)}
+  .slot.taken{background:#fdecea;border-color:#e57373;color:#a33232;padding:0 4px 0 6px;justify-content:space-between}
+  .slot.taken .bell{background:#fff;border:1px solid #e57373;border-radius:50%;width:32px;height:32px;font-size:15px;cursor:pointer;line-height:1;flex:0 0 auto}
+  .slot.taken .bell.on{background:#ffd9a0;border-color:#f4a261}
+  .slotmsg{font-size:13.5px;color:var(--muted);text-align:center;padding:14px 0;grid-column:1/-1}
+  .picked{font-size:13.5px;font-weight:700;color:var(--teal);text-align:center;margin-bottom:10px;min-height:20px}
+  .hp{position:absolute;left:-9999px;opacity:0;height:0;overflow:hidden}
+  .okbox{text-align:center;padding:10px 0}
+  .okbox .big{font-size:46px}
+  .okbox p{font-size:14px;color:var(--muted);line-height:1.8;margin:8px 0 14px}
   .row{display:flex;gap:12px;margin-top:28px}
   .row .btn{margin-top:0;flex:1;padding:14px 8px;font-size:15px}
   #qrRow{display:none}
@@ -134,6 +158,7 @@
   <p class="bio">رعاية متخصصة لصحة حيوانك الأليف،<br>تواصل معي وسأكون سعيداً بمساعدتك.</p>
 
   <a class="btn main" id="saveBtn" href="#" download="Dr-Alwaleed.vcf"><span class="pet l" data-pet="dog"></span><span class="ico">➕</span> احفظ رقمي في هاتفك</a>
+  <button class="btn book" id="bookBtn"><span class="pet r" data-pet="dog"></span><span class="ico">📅</span> احجز موعد</button>
   <a class="btn wa" id="waBtn" href="#" target="_blank" rel="noopener"><span class="pet r" data-pet="cat"></span><span class="ico">💬</span> محادثة واتساب</a>
   <a class="btn" id="callBtn" href="tel:+201118618641"><span class="pet l" data-pet="monkey"></span><span class="ico">📞</span> اتصال مباشر</a>
   <div class="row">
@@ -183,6 +208,57 @@
       <div id="fbMsg"></div>
       <div id="fbNote" hidden>ملحوظة: الآراء بتتحفظ على جهازك فقط لحد ما يتم ربط قاعدة بيانات.</div>
     </form>
+  </div>
+</div>
+
+<!-- نافذة الحجز -->
+<div class="modal bottom" id="bkModal">
+  <div class="sheet fbsheet">
+    <div class="fb-head"><h2>احجز موعد</h2><button class="x" id="bkClose" aria-label="إغلاق">✕</button></div>
+    <form id="bkForm" autocomplete="off">
+      <label>اختار اليوم</label>
+      <div class="days" id="bkDays"></div>
+      <label>اختار الميعاد</label>
+      <div class="legend"><span><i class="dot g"></i>متاح</span><span><i class="dot r"></i>محجوز (🔔 نبّهني لو اتوفر)</span></div>
+      <div class="slots" id="bkSlots"></div>
+      <div class="picked" id="bkPicked"></div>
+      <label for="bkName">اسمك</label>
+      <input id="bkName" maxlength="40" required placeholder="الاسم">
+      <label for="bkPhone">رقم الموبايل (واتساب)</label>
+      <input id="bkPhone" type="tel" inputmode="tel" maxlength="20" required placeholder="01xxxxxxxxx" dir="ltr" style="text-align:right">
+      <div class="two">
+        <div><label for="bkPet">نوع الحيوان</label>
+          <select id="bkPet"><option>قطة</option><option>كلب</option><option>طائر</option><option>أرنب</option><option>حصان</option><option>أخرى</option></select></div>
+        <div><label for="bkPetName">اسمه (اختياري)</label><input id="bkPetName" maxlength="20" placeholder="الاسم"></div>
+      </div>
+      <label for="bkReason">سبب الزيارة</label>
+      <select id="bkReason"><option>كشف</option><option>تطعيم</option><option>متابعة</option><option>عملية / جراحة</option><option>استشارة</option><option>عناية وحلاقة</option><option>أخرى</option></select>
+      <label for="bkNote">ملاحظات (اختياري)</label>
+      <textarea id="bkNote" maxlength="200" placeholder="أي تفاصيل عن حالة الحيوان..."></textarea>
+      <div class="hp"><input id="bkWeb" tabindex="-1" autocomplete="off"></div>
+      <button type="submit" class="btn main" style="margin-top:2px">إرسال طلب الحجز</button>
+      <div id="bkMsg" style="font-size:13.5px;margin-top:10px;text-align:center;min-height:20px;font-weight:600"></div>
+    </form>
+    <div class="okbox" id="bkOk" hidden>
+      <div class="big">✅</div>
+      <h3>تم استلام طلبك</h3>
+      <p id="bkOkTxt"></p>
+      <a class="btn wa" id="bkWa" href="#" target="_blank" rel="noopener" style="margin-top:0"><span class="ico">💬</span> أرسل التفاصيل للدكتور على واتساب</a>
+      <button class="close alt" id="bkDone" style="margin:10px 0 0">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<!-- نافذة الجرس -->
+<div class="modal" id="bellModal">
+  <div class="sheet" style="text-align:right">
+    <h2 style="text-align:center">🔔 نبّهني لو الميعاد اتوفر</h2>
+    <p id="bellFor" style="text-align:center"></p>
+    <input id="bellName" maxlength="40" placeholder="اسمك (اختياري)" style="width:100%;font-family:inherit;font-size:15px;border:1.5px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:10px">
+    <input id="bellPhone" type="tel" inputmode="tel" maxlength="20" placeholder="رقم الواتساب" dir="ltr" style="width:100%;font-family:inherit;font-size:15px;border:1.5px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:10px;text-align:right">
+    <p style="font-size:12.5px;text-align:center;margin-bottom:12px">لو الميعاد اتلغى، الدكتور هيبعتلك على واتساب.</p>
+    <div class="acts"><button class="close" id="bellOk">تفعيل التنبيه</button><button class="close alt" id="bellCancel">إلغاء</button></div>
+    <div id="bellMsg" style="font-size:13px;color:var(--teal);margin-top:10px;min-height:18px;font-weight:600;text-align:center"></div>
   </div>
 </div>
 
@@ -1672,6 +1748,171 @@ var QRCode=__r("index");window.makeQR=function(text){var q=new QRCode(-1,2);q.ad
       catch (e) { msg.textContent = 'استخدم زر حفظ الصورة.'; }
     }, 'image/png');
   });
+
+  /* ===== حجز موعد (جدول المواعيد) ===== */
+  (() => {
+    const OPEN_H = 6, CLOSE_H = 20, STEP = 30, DAYS_AHEAD = 14;   // ساعات العمل: 6ص - 8م، كل 30 دقيقة
+    const base = FIREBASE_DB ? FIREBASE_DB.replace(/\/$/, '') : '';
+    const $ = id => document.getElementById(id);
+    const bkModal = $('bkModal'), form = $('bkForm'), ok = $('bkOk'), msg = $('bkMsg');
+    const daysEl = $('bkDays'), slotsEl = $('bkSlots'), pickedEl = $('bkPicked');
+    const pad = n => String(n).padStart(2, '0');
+    const isoOf = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+    const KEYS = []; for (let m = OPEN_H * 60; m < CLOSE_H * 60; m += STEP) KEYS.push(pad(Math.floor(m / 60)) + pad(m % 60));
+    const label = k => { const h = +k.slice(0, 2), m = k.slice(2); return ((h % 12) || 12) + ':' + m + ' ' + (h >= 12 ? 'م' : 'ص'); };
+    const arDate = s => { try { return new Date(s + 'T12:00:00').toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long' }); } catch (e) { return s; } };
+    let selDate = '', selKey = '', taken = {}, timer = null, loadFail = false;
+    const bells = (() => { try { return JSON.parse(localStorage.getItem('bell_v1') || '{}'); } catch (e) { return {}; } })();
+
+    // أيام الاختيار
+    const today = new Date();
+    for (let i = 0; i < DAYS_AHEAD; i++) {
+      const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i);
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'day'; b.dataset.d = isoOf(d);
+      const bold = document.createElement('b'); bold.textContent = d.getDate();
+      const sm = document.createElement('small'); sm.textContent = i === 0 ? 'النهاردة' : d.toLocaleDateString('ar-EG', { weekday: 'short' });
+      b.append(bold, sm);
+      b.addEventListener('click', () => pickDay(b.dataset.d));
+      daysEl.appendChild(b);
+    }
+
+    async function loadSlots() {
+      if (!base) { taken = {}; loadFail = false; return; }
+      try {
+        const r = await fetch(base + '/slots/' + selDate + '.json', { cache: 'no-store' });
+        if (!r.ok) throw 0;
+        taken = (await r.json()) || {}; loadFail = false;
+      } catch (e) { loadFail = true; }
+    }
+
+    function render() {
+      slotsEl.textContent = '';
+      if (loadFail) { const d = document.createElement('div'); d.className = 'slotmsg'; d.textContent = 'تعذر تحميل المواعيد، اتأكد من الاتصال.'; slotsEl.appendChild(d); return; }
+      const now = new Date(), isToday = selDate === isoOf(now), nowMin = now.getHours() * 60 + now.getMinutes();
+      let shown = 0;
+      KEYS.forEach(k => {
+        if (isToday && (+k.slice(0, 2)) * 60 + (+k.slice(2)) <= nowMin) return;
+        shown++;
+        if (taken[k]) {
+          const c = document.createElement('div'); c.className = 'slot taken';
+          const s = document.createElement('span'); s.textContent = label(k);
+          const bt = document.createElement('button'); bt.type = 'button'; bt.className = 'bell' + (bells[selDate + '|' + k] ? ' on' : '');
+          bt.textContent = '🔔'; bt.setAttribute('aria-label', 'نبّهني لو اتوفر');
+          bt.addEventListener('click', () => openBell(selDate, k));
+          c.append(s, bt); slotsEl.appendChild(c);
+        } else {
+          const c = document.createElement('button'); c.type = 'button';
+          c.className = 'slot free' + (k === selKey ? ' sel' : ''); c.textContent = label(k);
+          c.addEventListener('click', () => { selKey = k; pickedEl.textContent = '✅ الميعاد المختار: ' + arDate(selDate) + ' - ' + label(k); render(); });
+          slotsEl.appendChild(c);
+        }
+      });
+      if (!shown) { const d = document.createElement('div'); d.className = 'slotmsg'; d.textContent = 'انتهت مواعيد اليوم، اختار يوم تاني.'; slotsEl.appendChild(d); }
+    }
+
+    async function pickDay(d) {
+      selDate = d; selKey = ''; pickedEl.textContent = '';
+      daysEl.querySelectorAll('.day').forEach(x => x.classList.toggle('on', x.dataset.d === d));
+      slotsEl.textContent = ''; const l = document.createElement('div'); l.className = 'slotmsg'; l.textContent = 'جاري تحميل المواعيد...'; slotsEl.appendChild(l);
+      await loadSlots(); render();
+    }
+
+    async function refresh() {
+      if (!selDate || !bkModal.classList.contains('open') || form.hidden) return;
+      await loadSlots();
+      if (selKey && taken[selKey]) { selKey = ''; pickedEl.textContent = 'الميعاد اللي اخترته اتحجز، اختار ميعاد تاني.'; }
+      render();
+    }
+
+    function open() {
+      form.hidden = false; ok.hidden = true; msg.textContent = '';
+      bkModal.classList.add('open');
+      pickDay(selDate || isoOf(today));
+      clearInterval(timer); timer = setInterval(refresh, 15000);
+    }
+    function close() { bkModal.classList.remove('open'); clearInterval(timer); }
+    $('bookBtn').addEventListener('click', open);
+    $('bkClose').addEventListener('click', close);
+    $('bkDone').addEventListener('click', close);
+    bkModal.addEventListener('click', e => { if (e.target === bkModal) close(); });
+
+    // ===== الجرس =====
+    const bellModal = $('bellModal'); let bellTarget = null;
+    function openBell(d, k) {
+      bellTarget = { d, k }; $('bellMsg').textContent = '';
+      $('bellFor').textContent = arDate(d) + ' - ' + label(k);
+      bellModal.classList.add('open');
+    }
+    $('bellCancel').addEventListener('click', () => bellModal.classList.remove('open'));
+    bellModal.addEventListener('click', e => { if (e.target === bellModal) bellModal.classList.remove('open'); });
+    $('bellOk').addEventListener('click', async () => {
+      const bm = $('bellMsg'); bm.style.color = '#b3402f';
+      const phone = $('bellPhone').value.replace(/[^\d+]/g, '').slice(0, 20), name = $('bellName').value.trim().slice(0, 40);
+      if (phone.replace(/\D/g, '').length < 10) { bm.textContent = 'اكتب رقم واتساب صحيح'; return; }
+      if (!base) { bm.textContent = 'الخدمة غير متاحة الآن'; return; }
+      bm.style.color = '#1f8579'; bm.textContent = 'جاري التفعيل...';
+      try {
+        const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+        const r = await fetch(base + '/waitlist/' + bellTarget.d + '/' + bellTarget.k + '/' + id + '.json', { method: 'PUT', body: JSON.stringify({ name, phone, ts: Date.now() }) });
+        if (!r.ok) throw 0;
+        bells[bellTarget.d + '|' + bellTarget.k] = 1;
+        try { localStorage.setItem('bell_v1', JSON.stringify(bells)); } catch (e) {}
+        bm.textContent = 'تم ✅ لو الميعاد اتوفر هنبلغك على واتساب.';
+        setTimeout(() => { bellModal.classList.remove('open'); render(); }, 1200);
+      } catch (e) { bm.style.color = '#b3402f'; bm.textContent = 'حصلت مشكلة، جرّب تاني.'; }
+    });
+
+    // ===== إرسال الحجز =====
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      msg.style.color = '#b3402f';
+      if ($('bkWeb').value) return; // honeypot
+      const b = {
+        name: $('bkName').value.trim().slice(0, 40),
+        phone: $('bkPhone').value.replace(/[^\d+]/g, '').slice(0, 20),
+        pet: $('bkPet').value, petName: $('bkPetName').value.trim().slice(0, 20),
+        reason: $('bkReason').value, date: selDate, slot: selKey, time: selKey ? label(selKey) : '',
+        note: $('bkNote').value.trim().slice(0, 200), status: 'pending', ts: Date.now()
+      };
+      if (!selKey) { msg.textContent = 'اختار الميعاد الأول من الجدول'; return; }
+      if (b.name.length < 2) { msg.textContent = 'اكتب اسمك'; return; }
+      if (b.phone.replace(/\D/g, '').length < 10) { msg.textContent = 'اكتب رقم موبايل صحيح'; return; }
+      let last = 0; try { last = +localStorage.getItem('bk_last') || 0; } catch (e2) {}
+      if (Date.now() - last < 60000) { msg.textContent = 'استنى دقيقة قبل ما تبعت طلب تاني'; return; }
+
+      msg.style.color = '#1f8579'; msg.textContent = 'جاري حجز الميعاد...';
+      let saved = false;
+      if (base) {
+        try {
+          // 1) قفل الميعاد (أول واحد يكتب يكسب، التاني بيترفض من القواعد)
+          const lk = await fetch(base + '/slots/' + b.date + '/' + b.slot + '.json', { method: 'PUT', body: JSON.stringify(true) });
+          if (lk.status === 401 || lk.status === 403) {
+            msg.style.color = '#b3402f'; msg.textContent = 'للأسف الميعاد ده اتحجز للتو، اختار ميعاد تاني.';
+            selKey = ''; pickedEl.textContent = ''; await loadSlots(); render(); return;
+          }
+          if (!lk.ok) throw 0;
+          // 2) تسجيل بيانات الحجز
+          const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+          const r = await fetch(base + '/bookings/' + id + '.json', { method: 'PUT', body: JSON.stringify(b) });
+          saved = r.ok;   // الميعاد اتقفل حتى لو تسجيل البيانات فشل، وواتساب هيوصّل التفاصيل
+        } catch (err) { msg.style.color = '#b3402f'; msg.textContent = 'تعذر الاتصال، جرّب تاني.'; return; }
+      }
+      try { localStorage.setItem('bk_last', String(Date.now())); } catch (e2) {}
+
+      const lines = [
+        'السلام عليكم دكتور، أريد تأكيد حجز موعد:',
+        'الاسم: ' + b.name, 'الموبايل: ' + b.phone,
+        'الحيوان: ' + b.pet + (b.petName ? ' (' + b.petName + ')' : ''),
+        'سبب الزيارة: ' + b.reason,
+        'الموعد: ' + arDate(b.date) + ' - ' + b.time,
+        b.note ? 'ملاحظات: ' + b.note : ''
+      ].filter(Boolean).join('\n');
+      $('bkWa').href = 'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(lines);
+      $('bkOkTxt').textContent = 'تم حجز ' + arDate(b.date) + ' الساعة ' + b.time + ' مبدئياً. الموعد مش مؤكد إلا بعد ما الدكتور يرد عليك، اضغط الزر تحت لإرسال التفاصيل على واتساب وتسريع التأكيد.';
+      form.hidden = true; ok.hidden = false; form.reset(); selKey = '';
+    });
+  })();
 
   // تحميل ملخص التقييم في أول الصفحة (بهدوء)
   loadFeedback().then(render).catch(() => {});
