@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>لوحة الدكتور</title>
 <style>
-  :root{--bg:#eef7f5;--card:#fff;--line:#cfe7e2;--teal:#1f8579;--teal2:#2a9d8f;--text:#1d3b3f;--muted:#5b7a7d;--red:#c0392b;--amber:#d98a1d}
+  :root{--bg:#f5f8fc;--card:#fff;--line:#d5e0f0;--teal:#2458b8;--teal2:#3a74d6;--text:#13294b;--muted:#5e6f8d;--red:#c0392b;--amber:#d98a1d}
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
   body{font-family:system-ui,-apple-system,'Segoe UI',Roboto,'Noto Naskh Arabic',Tahoma,sans-serif;background:var(--bg);color:var(--text);padding:16px;max-width:560px;margin:0 auto}
   h1{font-size:22px;margin-bottom:4px} h2{font-size:17px;margin:20px 0 10px}
@@ -24,6 +24,9 @@
   .tabs button{flex:1;padding:11px;border-radius:12px;border:1.5px solid var(--line);background:#fff;font-weight:700;color:var(--text)}
   .tabs button.on{background:var(--teal);color:#fff;border-color:var(--teal)}
   .badge{font-size:12px;font-weight:700;padding:3px 9px;border-radius:20px}
+  .new{background:#ffe9a8;color:#7a5200;font-size:11.5px;font-weight:800;padding:2px 8px;border-radius:20px;margin-inline-start:6px}
+  .card.isnew{border-color:#f0c24c;box-shadow:0 0 0 2px rgba(240,194,76,.35)}
+  .stars{color:#f2a33a;letter-spacing:1px}
   .badge.pending{background:#fff3d6;color:var(--amber)}.badge.confirmed{background:#e7f8ee;color:#135c36}.badge.canceled{background:#fdecea;color:var(--red)}
   .t{font-weight:900;font-size:16px}
   .kv{font-size:14px;line-height:1.9}
@@ -58,14 +61,16 @@
 <div id="app" hidden>
   <div class="top"><span class="muted" id="who"></span><button class="b o" id="reload">🔄 تحديث</button></div>
   <div class="tabs">
-    <button id="tabB" class="on">الحجوزات</button>
+    <button id="tabB" class="on">الحجوزات <span id="bCount"></span></button>
     <button id="tabW">الانتظار <span id="wCount"></span></button>
     <button id="tabS">المواعيد</button>
+    <button id="tabR">الآراء</button>
   </div>
   <div class="err" id="appMsg"></div>
 
   <div id="pB"></div>
   <div id="pW" hidden></div>
+  <div id="pR" hidden></div>
   <div id="pS" hidden>
     <p class="muted" style="margin-bottom:8px">اضغط على ميعاد أخضر لإغلاقه (مثلاً لو مشغول)، أو على ميعاد أحمر لتحريره.</p>
     <div class="days" id="sDays"></div>
@@ -91,7 +96,9 @@
   const intl = p => { p = String(p || '').replace(/[^\d+]/g, ''); if (p.startsWith('+')) return p.slice(1); if (p.startsWith('00')) return p.slice(2); if (p.startsWith('0')) return '2' + p; return p; };
   const wa = (p, text) => 'https://wa.me/' + intl(p) + '?text=' + encodeURIComponent(text);
 
-  let token = '', data = { bookings: {}, waitlist: {}, slots: {} }, selDay = isoOf(new Date());
+  let token = '', data = { bookings: {}, waitlist: {}, slots: {}, feedback: {} }, selDay = isoOf(new Date()), poll = null;
+  const seenGet = () => { try { return +localStorage.getItem('adm_seen') || 0; } catch (e) { return 0; } };
+  const seenSet = v => { try { localStorage.setItem('adm_seen', String(v)); } catch (e) {} };
 
   const tok = () => '?auth=' + encodeURIComponent(token);
   async function api(method, path, body) {
@@ -101,7 +108,7 @@
     return r.json();
   }
   function say(t, good) { const m = $('appMsg'); m.textContent = t || ''; m.className = 'err' + (good ? ' ok' : ''); }
-  function authFail() { token = ''; $('app').hidden = true; $('login').hidden = false; $('loginErr').textContent = 'انتهت الجلسة أو مفيش صلاحية، سجّل الدخول تاني.'; }
+  function authFail() { token = ''; clearInterval(poll); $('app').hidden = true; $('login').hidden = false; $('loginErr').textContent = 'انتهت الجلسة أو مفيش صلاحية، سجّل الدخول تاني.'; }
 
   /* ===== تسجيل الدخول ===== */
   $('go').addEventListener('click', async () => {
@@ -123,21 +130,22 @@
   });
   $('pw').addEventListener('keydown', e => { if (e.key === 'Enter') $('go').click(); });
 
-  async function loadAll() {
-    say('');
+  async function loadAll(quiet) {
+    if (!quiet) say('');
     try {
-      const [b, w, s] = await Promise.all([api('GET', '/bookings'), api('GET', '/waitlist'), api('GET', '/slots')]);
-      data = { bookings: b || {}, waitlist: w || {}, slots: s || {} };
+      const [b, w, s, f] = await Promise.all([api('GET', '/bookings'), api('GET', '/waitlist'), api('GET', '/slots'), api('GET', '/feedback')]);
+      data = { bookings: b || {}, waitlist: w || {}, slots: s || {}, feedback: f || {} };
       renderAll();
-    } catch (e) { if (e.auth) authFail(); else say('تعذر تحميل البيانات، جرّب تحديث.'); }
+      clearInterval(poll); poll = setInterval(() => { if (token && !document.hidden) loadAll(true); }, 60000);
+    } catch (e) { if (e.auth) authFail(); else if (!quiet) say('تعذر تحميل البيانات، جرّب تحديث.'); }
   }
-  $('reload').addEventListener('click', loadAll);
+  $('reload').addEventListener('click', () => loadAll());
 
   /* ===== التبويبات ===== */
   function tab(n) {
-    ['B', 'W', 'S'].forEach(x => { $('tab' + x).classList.toggle('on', x === n); $('p' + x).hidden = x !== n; });
+    ['B', 'W', 'S', 'R'].forEach(x => { $('tab' + x).classList.toggle('on', x === n); $('p' + x).hidden = x !== n; });
   }
-  $('tabB').onclick = () => tab('B'); $('tabW').onclick = () => tab('W'); $('tabS').onclick = () => tab('S');
+  $('tabB').onclick = () => tab('B'); $('tabW').onclick = () => tab('W'); $('tabS').onclick = () => tab('S'); $('tabR').onclick = () => tab('R');
 
   function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
   function btn(text, cls, fn) { const b = el('button', 'b ' + (cls || ''), text); b.addEventListener('click', fn); return b; }
@@ -151,13 +159,23 @@
       .filter(b => b && b.date && b.date >= today && b.status !== 'canceled')
       .sort((a, b) => (a.date + (a.slot || '')).localeCompare(b.date + (b.slot || '')));
     const done = Object.entries(data.bookings).filter(([, b]) => b && b.status === 'canceled' && b.date >= today).length;
+    const seen = seenGet(); const fresh = list.filter(b => (b.ts || 0) > seen && b.status !== 'confirmed');
+    $('bCount').textContent = fresh.length ? '(' + fresh.length + ' جديد)' : '';
+    document.title = (fresh.length ? '(' + fresh.length + ') ' : '') + 'لوحة الدكتور';
+    if (fresh.length) {
+      const bar = el('div', 'card'); const row0 = el('div', 'top');
+      row0.append(el('b', '', '🔔 ' + fresh.length + ' حجز جديد'), btn('✔️ تعليم الكل كمقروء', 'o', () => { seenSet(Math.max(...list.map(x => x.ts || 0), Date.now())); renderBookings(); }));
+      bar.append(row0); box.appendChild(bar);
+    }
     if (!list.length) { box.appendChild(el('div', 'card muted', 'مفيش حجوزات قادمة.')); }
     let last = '';
     list.forEach(b => {
       if (b.date !== last) { last = b.date; box.appendChild(el('h2', '', arDate(b.date))); }
-      const c = el('div', 'card');
+      const isNew = (b.ts || 0) > seen && b.status !== 'confirmed';
+      const c = el('div', 'card' + (isNew ? ' isnew' : ''));
       const t = el('div', 'top');
-      t.append(el('span', 't', b.time || label(b.slot || '0000')), el('span', 'badge ' + (b.status || 'pending'), b.status === 'confirmed' ? 'مؤكد' : 'بانتظار التأكيد'));
+      const tl = el('span', 't', b.time || label(b.slot || '0000')); if (isNew) tl.append(el('span', 'new', 'جديد'));
+      t.append(tl, el('span', 'badge ' + (b.status || 'pending'), b.status === 'confirmed' ? 'مؤكد' : 'بانتظار التأكيد'));
       const kv = el('div', 'kv');
       kv.append(el('div', '', '👤 ' + b.name), el('div', '', '📞 ' + b.phone), el('div', '', '🐾 ' + b.pet + (b.petName ? ' (' + b.petName + ')' : '') + ' · ' + (b.reason || '')));
       if (b.note) kv.append(el('div', '', '📝 ' + b.note));
@@ -260,7 +278,28 @@
     });
   }
 
-  function renderAll() { renderBookings(); renderWait(); renderSlotsAdmin(); }
+  /* ===== الآراء ===== */
+  function renderReviews() {
+    const box = $('pR'); box.textContent = '';
+    const list = Object.entries(data.feedback || {}).map(([id, f]) => ({ id, ...f })).filter(f => f && f.text).sort((a, b) => (b.ts || 0) - (a.ts || 0));
+    if (!list.length) { box.appendChild(el('div', 'card muted', 'مفيش آراء لسه.')); return; }
+    const avg = list.reduce((s, f) => s + (f.stars || 0), 0) / list.length;
+    box.appendChild(el('p', 'muted', 'المتوسط ' + avg.toFixed(1) + ' من 5 · ' + list.length + ' رأي. احذف أي رأي مسيء أو مزيف.'));
+    list.forEach(f => {
+      const c = el('div', 'card'); const t = el('div', 'top');
+      t.append(el('b', '', f.name || 'عميل'), el('span', 'stars', '★'.repeat(f.stars || 0) + '☆'.repeat(5 - (f.stars || 0))));
+      const tx = el('div', 'kv', f.text);
+      const dt = el('div', 'muted', f.ts ? new Date(f.ts).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' }) : '');
+      const row = el('div', 'row');
+      row.append(btn('🗑 حذف الرأي', 'r', async () => {
+        if (!confirm('تحذف الرأي ده نهائياً؟')) return;
+        try { await api('DELETE', '/feedback/' + f.id); delete data.feedback[f.id]; renderAll(); } catch (e) { if (e.auth) authFail(); else say('حصلت مشكلة، جرّب تاني.'); }
+      }));
+      c.append(t, tx, dt, row); box.appendChild(c);
+    });
+  }
+
+  function renderAll() { renderBookings(); renderWait(); renderSlotsAdmin(); renderReviews(); }
 </script>
 </body>
 </html>
