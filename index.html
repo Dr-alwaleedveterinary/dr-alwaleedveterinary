@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#eef7f5">
 <title>د. الوليد محمد - طبيب بيطري</title>
-<meta name="description" content="الكارت الشخصي للدكتور الوليد محمد، طبيب بيطري. تواصل واحجز بضغطة واحدة.">
+<meta name="description" content="موقع الدكتور الوليد محمد، طبيب بيطري. تواصل واحجز بضغطة واحدة.">
 <meta property="og:type" content="website">
 <meta property="og:title" content="د. الوليد محمد - طبيب بيطري">
 <meta property="og:description" content="احفظ رقمي، تواصل واتساب، وشوف آراء العملاء بضغطة واحدة.">
@@ -60,7 +60,12 @@
   .ico{font-size:20px}
   .row{display:flex;gap:12px;margin-top:28px}
   .row .btn{margin-top:0;flex:1;padding:14px 8px;font-size:15px}
-  #qrBtn{display:none}
+  #qrRow{display:none}
+  .row .btn.plain{margin-top:0}
+  .close.alt{background:#fff;color:var(--teal);border:1.5px solid var(--teal);margin-inline-start:8px}
+  .sheet .acts{display:flex;justify-content:center;gap:8px;flex-wrap:nowrap}
+  .sheet .acts .close{padding:12px 10px;font-size:14px;flex:1}
+  .sheet .acts .close{margin:0}
 
   /* الحيوانات اللي بتطل من حافة الزرار */
   .pet{position:absolute;bottom:calc(100% - 5px);width:54px;height:40px;pointer-events:none;
@@ -136,16 +141,24 @@
     <a class="btn" href="https://www.facebook.com/share/14t9dEvynhs/" target="_blank" rel="noopener"><span class="pet l" data-pet="dog"></span><span class="ico">📘</span> فيسبوك</a>
   </div>
   <button class="btn fb" id="fbBtn"><span class="pet r" data-pet="monkey"></span><span class="ico">⭐</span> آراء العملاء وشاركنا رأيك</button>
-  <button class="btn" id="qrBtn"><span class="pet l" data-pet="cat"></span><span class="ico">🔳</span> مشاركة الكارت (QR)</button>
+  <div class="row" id="qrRow">
+    <button class="btn" id="qrBtn"><span class="pet l" data-pet="cat"></span><span class="ico">🔳</span> QR</button>
+    <button class="btn" id="shareBtn"><span class="pet r" data-pet="dog"></span><span class="ico">🔗</span> مشاركة الموقع</button>
+  </div>
 </div>
 
 <!-- نافذة QR -->
 <div class="modal" id="modal">
   <div class="sheet">
-    <h2>امسح الكود لفتح الكارت</h2>
-    <p>وجّه كاميرا الموبايل ناحية الكود</p>
+    <h2>كود QR للموقع</h2>
+    <p>امسح الكود بكاميرا الموبايل لفتح الموقع</p>
     <div id="qr"></div>
-    <button class="close" id="closeBtn">إغلاق</button>
+    <div class="acts">
+      <button class="close" id="saveQr">💾 حفظ الكود في جهازي</button>
+      <button class="close" id="shareQr">📤 مشاركة الكود</button>
+    </div>
+    <button class="close alt" id="closeBtn" style="margin:12px 0 0">إغلاق</button>
+    <div id="qrMsg" style="font-size:13px;color:var(--teal);margin-top:10px;min-height:18px;font-weight:600"></div>
   </div>
 </div>
 
@@ -1432,7 +1445,7 @@ var QRCode=__r("index");window.makeQR=function(text){var q=new QRCode(-1,2);q.ad
   const MAPS   = "https://maps.app.goo.gl/PzxzEniNnZjLD6nt8";
   const FB     = "https://www.facebook.com/share/14t9dEvynhs/";
   const PHOTO  = "";                       // الصورة الشخصية: رابط صورة أو data:image... (فارغ = حرف "و")
-  const CARD_URL = "";                     // رابط الكارت بعد الرفع. لما تحطه يظهر زر الـ QR
+  const CARD_URL = "https://dr-alwaleedveterinary.github.io/dr-alwaleedveterinary/";                     // رابط الموقع بعد الرفع. لما تحطه يظهر زر مشاركة الموقع
   const FIREBASE_DB = "https://smart-card-f42d7-default-rtdb.europe-west1.firebasedatabase.app";                  // رابط قاعدة بيانات Firebase عشان الآراء تتشارك بين كل الزوار
   // ======================
 
@@ -1476,7 +1489,7 @@ var QRCode=__r("index");window.makeQR=function(text){var q=new QRCode(-1,2);q.ad
   const qrBtn = document.getElementById('qrBtn');
   const modal = document.getElementById('modal');
   if (CARD_URL && window.makeQR) {
-    qrBtn.style.display = 'flex';
+    document.getElementById('qrRow').style.display = 'flex';
     let made = false;
     qrBtn.addEventListener('click', () => {
       modal.classList.add('open');
@@ -1497,6 +1510,32 @@ var QRCode=__r("index");window.makeQR=function(text){var q=new QRCode(-1,2);q.ad
   }
   document.getElementById('closeBtn').addEventListener('click', () => modal.classList.remove('open'));
   modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('open'); });
+
+  // مشاركة / نسخ رابط الموقع
+  document.getElementById('shareBtn').addEventListener('click', async () => {
+    const url = CARD_URL || location.href;
+    try {
+      if (navigator.share) { await navigator.share({ title: NAME + ' - ' + TITLE, text: NAME + ' - ' + TITLE, url }); return; }
+    } catch (e) { if (e && e.name === 'AbortError') return; }
+    try { await navigator.clipboard.writeText(url); alert('تم نسخ رابط الموقع ✅'); }
+    catch (e) { prompt('انسخ رابط الموقع:', url); }
+  });
+
+  // حفظ / مشاركة صورة الـ QR
+  document.getElementById('saveQr').addEventListener('click', () => {
+    const c = document.querySelector('#qr canvas');
+    const msg = document.getElementById('qrMsg');
+    if (!c) return;
+    c.toBlob(blob => {
+      if (!blob) { msg.textContent = 'تعذر الحفظ، جرّب لقطة شاشة.'; return; }
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'Dr-Alwaleed-QR.png';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+      msg.textContent = 'تم حفظ الكود في جهازك ✅';
+    }, 'image/png');
+  });
 
   /* ===== آراء العملاء ===== */
   const LS_KEY = 'fb_alwaleed_v1';
@@ -1614,6 +1653,24 @@ var QRCode=__r("index");window.makeQR=function(text){var q=new QRCode(-1,2);q.ad
     } catch (err) {
       fbMsg.textContent = 'حصلت مشكلة في الإرسال، جرّب تاني.';
     }
+  });
+
+  document.getElementById('shareQr').addEventListener('click', () => {
+    const c = document.querySelector('#qr canvas');
+    const msg = document.getElementById('qrMsg');
+    if (!c) return;
+    const url = CARD_URL || location.href;
+    c.toBlob(async blob => {
+      if (!blob) { msg.textContent = 'تعذرت المشاركة.'; return; }
+      const file = new File([blob], 'Dr-Alwaleed-QR.png', { type: 'image/png' });
+      const data = { files: [file], title: NAME, text: NAME + ' - ' + TITLE + '\n' + url };
+      try {
+        if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share(data); return; }
+        if (navigator.share) { await navigator.share({ title: NAME, text: NAME + ' - ' + TITLE, url }); return; }
+      } catch (e) { if (e && e.name === 'AbortError') return; }
+      try { await navigator.clipboard.writeText(url); msg.textContent = 'المشاركة غير مدعومة هنا، تم نسخ رابط الموقع ✅'; }
+      catch (e) { msg.textContent = 'استخدم زر حفظ الصورة.'; }
+    }, 'image/png');
   });
 
   // تحميل ملخص التقييم في أول الصفحة (بهدوء)
